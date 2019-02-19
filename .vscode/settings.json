@@ -1,0 +1,8 @@
+{
+  "dotty": {
+    "trace": {
+      "remoteTracingUrl": "wss://lamppc36.epfl.ch/dotty-remote-tracer/upload/lsp.log",
+      "server": { "format": "JSON", "verbosity": "verbose" }
+    }
+  }
+}
