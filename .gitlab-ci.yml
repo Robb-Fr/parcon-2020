@@ -1,0 +1,37 @@
+# This configuration is not used for the final grading, you can change it if
+# you know what you're doing.
+
+stages:
+  - build
+  - grade
+
+compile:
+  stage: build
+  image: lampepfl/moocs:dotty-2020-02-12
+  except:
+    - tags
+  tags:
+    - cs206
+  script:
+    - sbt packageSubmission
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - submission.jar
+
+grade:
+  stage: grade
+  except:
+    - tags
+  tags:
+    - cs206
+  image:
+    name: smarter3/moocs:progfun1-example-2020-02-14
+    entrypoint: [""]
+  allow_failure: true
+  before_script:
+    - mkdir -p /shared/submission/
+    - cp submission.jar /shared/submission/submission.jar
+  script:
+    - cd /grader
+    - /grader/grade | /grader/feedback-printer
