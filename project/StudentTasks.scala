@@ -49,7 +49,7 @@ object StudentTasks extends AutoPlugin {
       Fork.java.fork(
         ForkOptions(),
         "-cp" :: classPath ::
-        "org.junit.runner.JUnitCore" ::
+        "org.junit.runner.DecodingJUnitCore" ::
         (Test / testSuite).value ::
         Nil
       )
