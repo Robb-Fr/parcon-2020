@@ -1,0 +1,92 @@
+From 3fed33bca70f6f0f1dd5cca9ccaadf16308b57bb Mon Sep 17 00:00:00 2001
+From: Olivier Blanvillain <olivier.blanvillain@gmail.com>
+Date: Tue, 3 Mar 2020 12:09:08 +0100
+Subject: [PATCH] Add decoding JUnit test runner
+
+---
+ build.sbt                                     |  2 +-
+ project/StudentTasks.scala                    |  2 +-
+ .../org/junit/runner/DecodingJUnitCore.scala  | 45 +++++++++++++++++++
+ 3 files changed, 47 insertions(+), 2 deletions(-)
+ create mode 100644 src/main/scala/org/junit/runner/DecodingJUnitCore.scala
+
+diff --git a/build.sbt b/build.sbt
+index f2b85db..08f4860 100644
+--- a/build.sbt
++++ b/build.sbt
+@@ -6,7 +6,7 @@ scalacOptions ++= Seq("-language:implicitConversions", "-deprecation")
+ libraryDependencies ++= Seq(
+   "com.storm-enroute" %% "scalameter-core" % "0.19",
+   "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0",
+-  "com.novocode" % "junit-interface" % "0.11" % Test
++  "com.novocode" % "junit-interface" % "0.11"
+ ).map(_.withDottyCompat(scalaVersion.value))
+ 
+ testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s")
+diff --git a/project/StudentTasks.scala b/project/StudentTasks.scala
+index 7604830..72ff004 100644
+--- a/project/StudentTasks.scala
++++ b/project/StudentTasks.scala
+@@ -49,7 +49,7 @@ object StudentTasks extends AutoPlugin {
+       Fork.java.fork(
+         ForkOptions(),
+         "-cp" :: classPath ::
+-        "org.junit.runner.JUnitCore" ::
++        "org.junit.runner.DecodingJUnitCore" ::
+         (Test / testSuite).value ::
+         Nil
+       )
+diff --git a/src/main/scala/org/junit/runner/DecodingJUnitCore.scala b/src/main/scala/org/junit/runner/DecodingJUnitCore.scala
+new file mode 100644
+index 0000000..d5bb2e7
+--- /dev/null
++++ b/src/main/scala/org/junit/runner/DecodingJUnitCore.scala
+@@ -0,0 +1,45 @@
++package org.junit.runner
++
++import collection.JavaConverters._
++import java.util.ArrayList
++import org.junit.internal.{JUnitSystem, RealSystem, TextListener}
++import org.junit.runner.notification.Failure
++import org.junit.runner.Result
++
++class DecodingJUnitCore extends JUnitCore {
++  // JUnitCore.runMain is unfortunatly private, so here it is, copy pasted
++  def runMain(system: JUnitSystem, args: Array[String]): Result = {
++    val classes = new ArrayList[Class[_]]()
++    val missingClasses = new ArrayList[Failure]()
++    args.foreach { each =>
++      try {
++          classes.add(Class.forName(each))
++      } catch {
++        case e: ClassNotFoundException =>
++          println("Could not find class: " + each)
++          val description = Description.createSuiteDescription(each)
++          val failure = new Failure(description, e)
++          missingClasses.add(failure)
++      }
++    }
++    val listener = new DecodingTextListener(system)
++    addListener(listener)
++    val result = run(classes.toArray(new Array[Class[_]](0)): _*)
++    missingClasses.asScala.foreach(result.getFailures().add)
++    result
++  }
++}
++
++object DecodingJUnitCore {
++  def main(args: Array[String]): Unit = {
++    val result = new DecodingJUnitCore().runMain(new RealSystem(), args)
++    System.exit(if (result.wasSuccessful()) 0 else 1)
++  }
++}
++
++class DecodingTextListener(system: JUnitSystem) extends TextListener(system) {
++  override def printFailure(each: Failure, prefix: String): Unit = {
++    println(prefix + ") " + scala.reflect.NameTransformer.decode(each.getTestHeader()))
++    print(each.getTrace())
++  }
++}
+-- 
+2.20.1
+
