@@ -25,7 +25,7 @@ grade:
   tags:
     - cs206
   image:
-    name: smarter3/moocs:concpar-lockfree-2020-03-24
+    name: smarter3/moocs:concpar-lockfree-2020-03-24-2
     entrypoint: [""]
   allow_failure: true
   before_script:
