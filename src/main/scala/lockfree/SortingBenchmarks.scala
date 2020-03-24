@@ -61,15 +61,15 @@ object SortingBenchmarks extends App {
       |synchronized:
       |  - sequential:  $syncSeqTime
       |  - parallel:    $syncParTime
-      |  - speedup:     ${syncSeqTime / syncParTime}
+      |  - speedup:     ${syncSeqTime.toFloat / syncParTime}
       |
       |fine-grained:
       |  - sequential:  $fineSeqTime
       |  - parallel:    $fineParTime
-      |  - speedup:     ${fineSeqTime / fineParTime}
+      |  - speedup:     ${fineSeqTime.toFloat / fineParTime}
       |
       |synchronized/fine-grained:
-      |  - speedup:     ${syncParTime / fineParTime}
+      |  - speedup:     ${syncParTime.toFloat / fineParTime}
       |
     """.stripMargin)
 
