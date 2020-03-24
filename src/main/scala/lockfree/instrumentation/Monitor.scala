@@ -1,4 +1,4 @@
-package instrumentation
+package lockfree.instrumentation
 
 class Dummy
 

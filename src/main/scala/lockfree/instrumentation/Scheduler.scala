@@ -1,4 +1,4 @@
-package instrumentation
+package lockfree.instrumentation
 
 import java.util.concurrent._;
 import scala.concurrent.duration._

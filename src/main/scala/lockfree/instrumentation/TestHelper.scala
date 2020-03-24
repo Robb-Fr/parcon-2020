@@ -1,4 +1,4 @@
-package instrumentation
+package lockfree.instrumentation
 
 import scala.util.Random
 import scala.collection.mutable.{Map => MutableMap}

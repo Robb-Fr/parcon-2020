@@ -1,4 +1,4 @@
-package instrumentation
+package lockfree.instrumentation
 
 import scala.annotation.tailrec
 import lockfree._

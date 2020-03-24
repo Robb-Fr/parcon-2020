@@ -1,5 +1,5 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
-package instrumentation
+package lockfree.instrumentation
 
 import java.lang.management._
 

@@ -1,4 +1,4 @@
-package instrumentation
+package lockfree.instrumentation
 
 trait MockedMonitor extends Monitor {
   def scheduler: Scheduler
