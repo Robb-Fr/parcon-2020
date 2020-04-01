@@ -15,10 +15,32 @@ class BoundedBuffer[T](size: Int) extends AbstractBoundedBuffer[T](size) {
   // You do not need to create those variables yourself!
   // They are inherited from the AbstractBoundedBuffer class.
 
-  override def put(e: T): Unit = ???
+  override def put(e: T): Unit = 
+    synchronized{
+      while(isFull)
+        wait()
+      buffer(tail) = e
+      count += 1
+      notifyAll()
+    }
 
-  override def take(): T = ???
+  override def take(): T = 
+    synchronized{
+      while(isEmpty)
+        wait()
+      val res = buffer(head)
+      head = (head + 1)%size
+      count -= 1
+      notifyAll()
+      res
+    }
 
+  def isFull = count >= size
+
+  def isEmpty = count <= 0
+
+  def tail = (head+count)%size
+  
   // You may want to add methods to:
   // - check whether the buffer is empty
   // - check whether the buffer is full
