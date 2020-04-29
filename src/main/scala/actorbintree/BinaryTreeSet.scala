@@ -72,9 +72,9 @@ class BinaryTreeSet extends Actor {
     case op: Operation => root!(op)
     case GC => 
       val newRoot = createRoot
-      root!CopyTo(newRoot)
       context.become(garbageCollecting(newRoot))
-    case others => println("Unknown message received : "+others+" by "+this) }
+      root!CopyTo(newRoot)
+    case others => throw(new IllegalStateException)}//println("Unknown message received : "+others+" by "+this) }
 
   // optional
   /** Handles messages while garbage collection is performed.
@@ -82,15 +82,14 @@ class BinaryTreeSet extends Actor {
     * all non-removed elements into.
     */
   def garbageCollecting(newRoot: ActorRef): Receive = 
-    case op: Operation => pendingQueue = pendingQueue.appended(op)
-    case CopyFinished =>
+    case op: Operation => pendingQueue = pendingQueue.enqueue(op)
+    case CopyFinished => root!PoisonPill
       root = newRoot
       context.become(normal)
       pendingQueue.foreach(op => self!op)
       pendingQueue = Queue.empty[Operation]
     case GC => 
-    case others => println("Unknown message received : "+others+" by "+this)
-
+    case others => throw(new IllegalStateException)//println("Unknown message received : "+others+" by "+this)
 }
 
 object BinaryTreeNode {
@@ -110,14 +109,14 @@ object BinaryTreeNode {
   def props(elem: Int, initiallyRemoved: Boolean) = Props(classOf[BinaryTreeNode],  elem, initiallyRemoved)
 }
 
-class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
+class BinaryTreeNode(val value: Int, initiallyRemoved: Boolean) extends Actor {
   import BinaryTreeNode._
   import BinaryTreeSet._
 
   var subtrees = Map[Position, ActorRef]()
   var removed = initiallyRemoved
 
-  override def toString = "BinaryTreeNode of elem "+elem
+  override def toString = "BinaryTreeNode of elem "+value
 
   // optional
   def receive = normal
@@ -126,10 +125,10 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
   /** Handles `Operation` messages and `CopyTo` requests. */
   val normal: Receive = {
     case op: Operation => 
-      val rightSub = if(elem < this.elem) Left else Right
       op match
         case Insert(requester, id, elem) => 
-          if(elem == this.elem) 
+          val rightSub = if(elem < value) Left else Right
+          if(elem == value) 
             removed = false 
             requester!(OperationFinished(id))
           else 
@@ -140,15 +139,17 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
               case Some(t) => t!(op)
 
         case Contains(requester, id, elem) => 
-          if(elem == this.elem && removed == false)
-            requester!(ContainsResult(id, true))
+          val rightSub = if(elem < value) Left else Right
+          if(elem == value)
+            requester!(ContainsResult(id, !removed))
           else
             subtrees.get(rightSub) match
               case None => requester!(ContainsResult(id, false))
               case Some(t) => t!(op)
 
         case Remove(requester, id, elem) => 
-          if(elem == this.elem) 
+          val rightSub = if(elem < value) Left else Right
+          if(elem == value) 
             removed = true 
             requester!(OperationFinished(id))
           else 
@@ -157,41 +158,34 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
               case Some(t) => t!(op)
 
     case CopyTo(treeNode) => 
-      var expected: Set[ActorRef] = Set.empty
-
-      if(!removed)
-        treeNode!Insert(self, this.elem, this.elem)
-
-      subtrees.get(Left) match
-        case Some(a) => expected+=a
-          a!CopyTo(treeNode)
-        case _ =>
-
-      subtrees.get(Right) match
-        case Some(a) => expected+=a
-          a!CopyTo(treeNode)
-        case _ =>
+      var expected: Set[ActorRef] = subtrees.values.toSet
 
       if(expected.isEmpty && removed)
         context.parent!CopyFinished
-        self!PoisonPill
       else
         context.become(copying(expected, removed))
-
-    case others => println("Unknown message received : "+others+" by "+this) }
+        expected.foreach(a => a!CopyTo(treeNode))
+        if(!removed)
+          treeNode!Insert(self, 0, value)
+    case others => throw(new IllegalStateException) }//println("Unknown message received : "+others+" by "+this) }
 
   // optional
   /** `expected` is the set of ActorRefs whose replies we are waiting for,
     * `insertConfirmed` tracks whether the copy of this node to the new tree has been confirmed.
     */
   def copying(expected: Set[ActorRef], insertConfirmed: Boolean): Receive = 
-    case OperationFinished(_) => context.become(copying(expected, true))
-      if((expected).isEmpty)
+    case OperationFinished(_) => 
+      if(expected.isEmpty)
+        context.become(normal)
         context.parent!CopyFinished
-        self!PoisonPill
-    case CopyFinished => context.become(copying(expected-sender, insertConfirmed))
+      else
+        context.become(copying(expected, true))
+    case CopyFinished => 
       if((expected-sender).isEmpty && insertConfirmed)
+        context.become(normal)
         context.parent!CopyFinished
-        self!PoisonPill
-    case others => println("Unknown message received : "+others+" by "+this)
+      else
+        context.become(copying(expected-sender, insertConfirmed))
+    case others => throw(new IllegalStateException)
+    //println("Unknown message received : "+others+" by "+this)
 }
