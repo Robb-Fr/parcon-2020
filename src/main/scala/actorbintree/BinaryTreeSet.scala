@@ -188,4 +188,5 @@ class BinaryTreeNode(val value: Int, initiallyRemoved: Boolean) extends Actor {
         context.become(copying(expected-sender, insertConfirmed))
     case others => throw(new IllegalStateException)
     //println("Unknown message received : "+others+" by "+this)
+    
 }
